@@ -1,0 +1,1 @@
+	Solo instrucciones, NO imágenes
