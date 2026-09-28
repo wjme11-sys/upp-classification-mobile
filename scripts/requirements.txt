@@ -1,0 +1,22 @@
+# Dependencias del proyecto: Clasificación de UPP con EfficientNet-B0 y TFLite
+# Versiones verificadas y probadas en Google Colab (noviembre 2025)
+
+# --- Deep Learning ---
+tensorflow==2.15.0
+keras==2.15.0
+
+# --- Procesamiento de imágenes ---
+Pillow==10.1.0
+opencv-python==4.8.1.78
+
+# --- Análisis de datos y métricas ---
+numpy==1.24.3
+pandas==2.1.3
+scikit-learn==1.3.2
+
+# --- Visualización ---
+matplotlib==3.8.2
+seaborn==0.13.0
+
+# --- Utilidades ---
+tqdm==4.66.1
