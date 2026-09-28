@@ -1,0 +1,196 @@
+package com.example.clasificadorulcerasfinal
+
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.os.Bundle
+import android.os.Environment
+import android.util.Base64
+import android.util.Log
+import android.view.View
+import android.widget.Button
+import android.widget.ImageView
+import android.widget.TextView
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import androidx.camera.core.*
+import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.view.PreviewView
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.FileWriter
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+
+class MainActivity : AppCompatActivity() {
+
+    private lateinit var cameraExecutor: ExecutorService
+    private lateinit var viewFinder: PreviewView
+    private lateinit var captureButton: Button
+    private lateinit var btnHistorial: Button
+    private lateinit var resultTextView: TextView
+    private lateinit var imageView: ImageView
+    private lateinit var classifier: TfLiteClassifier
+    private var imageCapture: ImageCapture? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        viewFinder = findViewById(R.id.viewFinder)
+        captureButton = findViewById(R.id.captureButton)
+        resultTextView = findViewById(R.id.resultTextView)
+        imageView = findViewById(R.id.imageView)
+        btnHistorial = findViewById(R.id.btnHistorial)
+
+        classifier = TfLiteClassifier(this)
+        cameraExecutor = Executors.newSingleThreadExecutor()
+
+        if (allPermissionsGranted()) {
+            startCamera()
+        } else {
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), 10)
+        }
+
+        captureButton.setOnClickListener {
+            if (imageView.visibility == View.VISIBLE) {
+                imageView.visibility = View.GONE
+                viewFinder.visibility = View.VISIBLE
+                resultTextView.text = "Enfocando..."
+            } else {
+                takePhoto()
+            }
+        }
+
+        btnHistorial.setOnClickListener {
+            val intent = Intent(this, HistorialActivity::class.java)
+            startActivity(intent)
+        }
+    }
+
+    private fun startCamera() {
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
+        cameraProviderFuture.addListener({
+            val cameraProvider = cameraProviderFuture.get()
+            val preview = Preview.Builder().build().also {
+                it.setSurfaceProvider(viewFinder.surfaceProvider)
+            }
+            imageCapture = ImageCapture.Builder().build()
+            try {
+                cameraProvider.unbindAll()
+                cameraProvider.bindToLifecycle(this, CameraSelector.DEFAULT_BACK_CAMERA, preview, imageCapture)
+            } catch(exc: Exception) {}
+        }, ContextCompat.getMainExecutor(this))
+    }
+
+    private fun takePhoto() {
+        val imageCapture = imageCapture ?: return
+        imageCapture.takePicture(
+            ContextCompat.getMainExecutor(this),
+            object : ImageCapture.OnImageCapturedCallback() {
+                override fun onCaptureSuccess(image: ImageProxy) {
+                    val buffer = image.planes[0].buffer
+                    val bytes = ByteArray(buffer.remaining())
+                    buffer.get(bytes)
+                    val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                    image.close()
+
+                    val finalBitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true)
+
+                    runOnUiThread {
+                        imageView.setImageBitmap(finalBitmap)
+                        imageView.visibility = View.VISIBLE
+                        viewFinder.visibility = View.INVISIBLE
+                        resultTextView.text = "Analizando..."
+                        classifyImage(finalBitmap)
+                    }
+                }
+                override fun onError(exc: ImageCaptureException) {}
+            }
+        )
+    }
+
+    private fun classifyImage(bitmap: Bitmap) {
+        cameraExecutor.execute {
+            try {
+                val result = classifier.classify(bitmap)
+                val predictedClass = result.first
+                val confidence = result.second
+
+                val labels = listOf(
+                    "Ulcera Grado I", "Ulcera Grado II", "Ulcera Grado III", "Ulcera Grado IV"
+                )
+
+                runOnUiThread {
+                    if (predictedClass in labels.indices) {
+                        val labelName = labels[predictedClass]
+                        val percentage = (confidence * 100).toInt()
+                        resultTextView.text = "Diagnóstico: $labelName\nConfianza: $percentage%"
+
+                        // Guardamos con la miniatura
+                        guardarEnHistorial(labelName, percentage.toFloat(), bitmap)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("IA_DEBUG", "Error: ${e.message}")
+            }
+        }
+    }
+
+    // --- FUNCIONES DE APOYO ---
+
+    private fun guardarEnHistorial(diagnostico: String, precision: Float, bitmap: Bitmap) {
+        lifecycleScope.launch(Dispatchers.IO) {
+            val fotoBase64 = bitmapToBase64(bitmap)
+            val db = AppDatabase.getDatabase(this@MainActivity)
+            val nuevoEscaneo = EscaneoEntity(
+                diagnostico = diagnostico,
+                precision = precision,
+                fecha = java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault()).format(java.util.Date()),
+                fotoMiniatura = fotoBase64
+            )
+            db.escaneoDao().insertarEscaneo(nuevoEscaneo)
+        }
+    }
+
+    private fun bitmapToBase64(bitmap: Bitmap): String {
+        val scaledBitmap = Bitmap.createScaledBitmap(bitmap, 200, 200, false)
+        val byteArrayOutputStream = ByteArrayOutputStream()
+        scaledBitmap.compress(Bitmap.CompressFormat.JPEG, 70, byteArrayOutputStream)
+        return Base64.encodeToString(byteArrayOutputStream.toByteArray(), Base64.DEFAULT)
+    }
+
+    fun exportarHistorialACsv(listaEscaneos: List<EscaneoEntity>) {
+        val nombreArchivo = "Reporte_Ulceras_${System.currentTimeMillis()}.csv"
+        val carpetaDescargas = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+        val archivoCsv = File(carpetaDescargas, nombreArchivo)
+
+        try {
+            val writer = FileWriter(archivoCsv)
+            writer.append("ID,Diagnostico,Precision,Fecha\n")
+            for (escaneo in listaEscaneos) {
+                writer.append("${escaneo.id},${escaneo.diagnostico},${escaneo.precision}%,${escaneo.fecha}\n")
+            }
+            writer.flush()
+            writer.close()
+            runOnUiThread { Toast.makeText(this, "Exportado a Descargas", Toast.LENGTH_LONG).show() }
+        } catch (e: Exception) {
+            runOnUiThread { Toast.makeText(this, "Error al exportar", Toast.LENGTH_SHORT).show() }
+        }
+    }
+
+    private fun allPermissionsGranted() = ContextCompat.checkSelfPermission(baseContext, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+
+    override fun onDestroy() {
+        super.onDestroy()
+        cameraExecutor.shutdown()
+        classifier.close()
+    }
+}
