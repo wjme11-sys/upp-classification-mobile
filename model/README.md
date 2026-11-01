@@ -49,7 +49,8 @@ ImageProcessor.Builder()
     .add(ResizeOp(224, 224, ResizeMethod.BILINEAR))
     .add(NormalizeOp(0f, 255f))       // [0, 255] → [0, 1]
     .add(NormalizeOp(-1f, 2f))        // [0, 1] → [-1, 1]
-    .build() ```
+    .build()
+```
 
 ---
 
