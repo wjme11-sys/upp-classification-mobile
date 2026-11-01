@@ -52,6 +52,7 @@ ImageProcessor.Builder()
     .build()
 ---
 
+
 ## Limitaciones Conocidas
 
 1. **Tamaño reducido del dataset:** 1,200 imágenes heterogéneas de cinco fuentes.
