@@ -50,3 +50,13 @@ ImageProcessor.Builder()
     .add(NormalizeOp(0f, 255f))       // [0, 255] → [0, 1]
     .add(NormalizeOp(-1f, 2f))        // [0, 1] → [-1, 1]
     .build()
+---
+
+## Limitaciones Conocidas
+
+1. **Tamaño reducido del dataset:** 1,200 imágenes heterogéneas de cinco fuentes.
+2. **Sobreajuste:** El modelo muestra un overfitting notable (69% train vs 47% val).
+3. **Confusión en grados intermedios:** Recall bajo en Grados II (0.19) y III (0.26).
+4. **Confianza moderada:** Distribución de probabilidades muy repartida en algunas predicciones.
+5. **Variabilidad entre ejecuciones:** La confianza en predicciones correctas varía entre ejecuciones (42.64% a 87.13%).
+6. **Alcance clínico restringido (Piel Sana):** El modelo fue entrenado exclusivamente con imágenes de UPP (Grados I-IV). No es una herramienta de tamizaje. Si se le proporciona una imagen de piel sana, el modelo la clasificará erróneamente como Grado I (eritema).
