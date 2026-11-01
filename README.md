@@ -265,6 +265,8 @@ Estas imágenes cuentan con consentimiento explícito para uso científico y div
 ---
 
 ## ⚠️ Limitaciones
+**⚠️ Aviso de alcance (Scope Warning):**
+Este modelo está diseñado **exclusivamente para clasificar la severidad de úlceras por presión (Grados I-IV)** que ya han sido identificadas clínicamente. **No es una herramienta de tamizaje.** Si se le proporciona una imagen de piel sana, el modelo la clasificará erróneamente como Grado I (eritema), ya que no fue entrenado con una clase de "no úlcera".
 
 Este trabajo reconoce las siguientes limitaciones:
 
@@ -274,7 +276,7 @@ Este trabajo reconoce las siguientes limitaciones:
 4. **Confusión en grados intermedios:** Los grados II y III presentan recalls bajos (0.19 y 0.26).
 5. **Sensibilidad a iluminación:** No se han explorado condiciones extremas de captura.
 6. **Clasificación vs. segmentación:** No se calcula el área de la úlcera en cm².
-
+7. **Alcance clínico restringido:** El modelo no diferencia entre piel sana y lesiones por presión. Su uso debe limitarse a la clasificación de úlceras previamente identificadas.
 ---
 
 ## 🔮 Trabajo Futuro
