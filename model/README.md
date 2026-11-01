@@ -6,18 +6,14 @@ Detalles técnicos del modelo final de clasificación de Úlceras por Presión (
 
 ## Información General
 
-| Campo | Valor |
-|---|---|
-| **Arquitectura** | EfficientNet-B0 |
-| **Framework de entrenamiento** | TensorFlow 2.15+ / Keras |
-| **Formato de despliegue** | TensorFlow Lite (`.tflite`) |
-| **Tipo de cuantización** | Dynamic Range Quantization (`tf.lite.Optimize.DEFAULT`) |
-| **Tamaño final del modelo** | 14.2 MB |
-| **Tamaño del modelo Keras original** | ~29 MB |
-| **Reducción por cuantización** | ~51% |
-| **Número de parámetros** | ~5.3 M |
-| **Entrada** | Imagen RGB 224×224 píxeles |
-| **Salida** | 4 clases (softmax) |
+Campo	Valor
+Arquitectura	EfficientNet-B0
+Framework de entrenamiento	TensorFlow 2.15+ / Keras
+Formato de despliegue	TensorFlow Lite (.tflite)
+Modelo en producción	clasificador_final_v4.tflite
+Tamaño final del modelo	15.3 MB
+Entrada	Imagen RGB 224×224 píxeles
+Salida	4 clases (softmax)
 
 ---
 
